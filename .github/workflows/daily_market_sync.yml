@@ -1,0 +1,36 @@
+name: Daily Market Data Sync (Supabase)
+
+on:
+  workflow_dispatch: # Allows n8n Cloud and Antigravity to trigger on demand
+  schedule:
+    # 4:30 PM EST = 20:30 UTC / 21:30 UTC depending on DST
+    - cron: '30 20 * * 1-5'
+
+jobs:
+  market-sync:
+    name: Sync Stocks & Options to Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Master Daily Sync (Stocks + Options)
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          HEDGE_DATABASE_URL: ${{ secrets.HEDGE_DATABASE_URL }}
+        run: |
+          python sync_master_daily.py

@@ -1,0 +1,192 @@
+{
+  "name": "Daily Stock OHLC & Technical Analysis Incremental Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 16 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-001",
+      "name": "Schedule Trigger (Mon-Fri 4:30 PM EST)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sync-stock-ohlc",
+        "options": {}
+      },
+      "id": "webhook-trigger-002",
+      "name": "On-Demand Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        480
+      ],
+      "webhookId": "sync-stock-ohlc"
+    },
+    {
+      "parameters": {
+        "command": "python C:\\Users\\ganta\\OneDrive\\ClaudeCode\\Fidelity\\OHLC_Data_Supabase\\incremental_update.py"
+      },
+      "id": "execute-command-003",
+      "name": "Run Incremental Sync Script",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        480,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $json.stdout || '';\nconst errorOutput = $json.stderr || '';\nconst exitCode = $json.exitCode || 0;\n\nconst isSuccess = exitCode === 0 && !output.includes('ERROR');\n\n// Extract summary details\nconst matchRecords = output.match(/Upserted (\\d+) records/);\nconst recordsUpdated = matchRecords ? parseInt(matchRecords[1]) : 0;\n\nreturn [{\n  json: {\n    status: isSuccess ? 'SUCCESS' : 'FAILURE',\n    exit_code: exitCode,\n    records_updated: recordsUpdated,\n    stdout: output,\n    stderr: errorOutput,\n    executed_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-result-004",
+      "name": "Parse Execution Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-001",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "SUCCESS",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-success-005",
+      "name": "Is Success?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        940,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log(`[DAILY SYNC SUCCESS] Updated ${$json.records_updated} OHLC records at ${$json.executed_at}`);\nreturn [{ json: { message: `Successfully updated ${$json.records_updated} stock records in Supabase.` } }];"
+      },
+      "id": "log-success-006",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "console.error(`[DAILY SYNC FAILED] ${$json.stderr || $json.stdout}`);\nreturn [{ json: { error: 'Daily OHLC Sync failed. Check stdout/stderr for details.', details: $json.stderr || $json.stdout } }];"
+      },
+      "id": "log-error-007",
+      "name": "Log Error / Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Mon-Fri 4:30 PM EST)": {
+      "main": [
+        [
+          {
+            "node": "Run Incremental Sync Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On-Demand Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Run Incremental Sync Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Incremental Sync Script": {
+      "main": [
+        [
+          {
+            "node": "Parse Execution Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Execution Results": {
+      "main": [
+        [
+          {
+            "node": "Is Success?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Success?": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Error / Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

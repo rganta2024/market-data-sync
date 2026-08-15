@@ -1,0 +1,220 @@
+{
+  "name": "Trigger GitHub Actions Market Sync from n8n Cloud",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 16 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-001",
+      "name": "Schedule Trigger (Mon-Fri 4:30 PM EST)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "trigger-market-sync",
+        "options": {}
+      },
+      "id": "webhook-trigger-002",
+      "name": "On-Demand Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        480
+      ],
+      "webhookId": "trigger-market-sync"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════════════════\n// GITHUB ACTIONS CONFIGURATION\n// ═══════════════════════════════════════════════════════════════════\n\nconst GITHUB_OWNER = 'YOUR_GITHUB_USERNAME'; // e.g., 'johndoe'\nconst GITHUB_REPO = 'YOUR_GITHUB_REPO_NAME'; // e.g., 'market-data-sync'\nconst GITHUB_WORKFLOW_FILE = 'daily_market_sync.yml'; // Workflow file name\nconst GITHUB_PAT = 'ghp_YOUR_PERSONAL_ACCESS_TOKEN'; // GitHub Personal Access Token (repo scope)\nconst TARGET_BRANCH = 'main'; // Target branch to execute\n\nreturn [{\n  json: {\n    owner: GITHUB_OWNER,\n    repo: GITHUB_REPO,\n    workflow_id: GITHUB_WORKFLOW_FILE,\n    github_token: GITHUB_PAT,\n    ref: TARGET_BRANCH\n  }\n}];"
+      },
+      "id": "config-github-003",
+      "name": "Configure GitHub Credentials",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $json.owner }}/{{ $json.repo }}/actions/workflows/{{ $json.workflow_id }}/dispatches",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.github_token }}"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"ref\": \"{{ $json.ref }}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "dispatch-github-action-004",
+      "name": "Dispatch GitHub Actions Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-001",
+              "leftValue": "={{ $json.statusCode || 204 }}",
+              "rightValue": 204,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-dispatched-005",
+      "name": "Is Dispatch Successful?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        960,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log('[GITHUB ACTIONS DISPATCH SUCCESS] Workflow triggered successfully.');\nreturn [{\n  json: {\n    status: 'SUCCESS',\n    message: 'GitHub Actions Market Sync workflow triggered successfully.',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "log-success-006",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "console.error('[GITHUB ACTIONS DISPATCH FAILED]', JSON.stringify($json));\nreturn [{\n  json: {\n    status: 'FAILED',\n    error: 'Failed to trigger GitHub Actions workflow. Check token permissions or repo name.',\n    response: $json\n  }\n}];"
+      },
+      "id": "log-error-007",
+      "name": "Log Error / Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Mon-Fri 4:30 PM EST)": {
+      "main": [
+        [
+          {
+            "node": "Configure GitHub Credentials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On-Demand Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Configure GitHub Credentials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configure GitHub Credentials": {
+      "main": [
+        [
+          {
+            "node": "Dispatch GitHub Actions Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch GitHub Actions Workflow": {
+      "main": [
+        [
+          {
+            "node": "Is Dispatch Successful?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Dispatch Successful?": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Error / Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
