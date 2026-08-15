@@ -11,7 +11,7 @@ logging.basicConfig(
 logger = logging.getLogger("Master_Sync")
 
 from incremental_update import run_incremental_sync as sync_stocks
-from sync_options_data import sync_options_for_underlyings as sync_options
+from sync_options_data import sync_options_for_underlyings as sync_options, TARGET_UNDERLYINGS
 
 def main():
     start_time = datetime.now(timezone.utc)
@@ -19,19 +19,19 @@ def main():
     logger.info("STARTING MASTER DAILY MARKET DATA SYNC (STOCKS + OPTIONS)")
     logger.info("=================================================================")
     
-    # 1. Sync Stock OHLC & Technical Analysis Indicators (223 symbols)
+    # 1. Sync Stock OHLC & Technical Analysis Indicators (227 symbols)
     try:
         logger.info("Step 1/2: Syncing Stock OHLC & Technical Indicators...")
         sync_stocks(lookback_days=400, update_recent_bars=5)
     except Exception as e:
         logger.error(f"Stock sync failed: {e}")
 
-    # 2. Sync Options OHLC, Greeks & Implied Volatility
+    # 2. Sync Options OHLC, Greeks & Implied Volatility (Calls & Puts across 28 underlyings)
     try:
-        logger.info("Step 2/2: Syncing Options OHLC & Greeks for Core Underlyings...")
+        logger.info(f"Step 2/2: Syncing Options OHLC & Greeks for {len(TARGET_UNDERLYINGS)} Underlyings (Calls & Puts)...")
         sync_options(
-            underlyings=["QQQ", "SPY", "SPXL", "TQQQ", "IWM", "DIA", "SOXL", "NVDA", "TSLA", "AAPL"],
-            days_back=30,
+            underlyings=TARGET_UNDERLYINGS,
+            days_back=45,
             max_contracts_per_underlying=100
         )
     except Exception as e:

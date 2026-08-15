@@ -37,8 +37,15 @@ logger = logging.getLogger("Options_Pipeline")
 
 HEDGE_DATABASE_URL = os.getenv("HEDGE_DATABASE_URL")
 
-# Default popular underlyings for options tracking
-TARGET_UNDERLYINGS = ["QQQ", "SPY", "SPXL", "TQQQ", "IWM", "DIA", "SOXL", "NVDA", "TSLA", "AAPL"]
+# Expanded target underlyings for both Calls and Puts tracking
+TARGET_UNDERLYINGS = [
+    # Core Benchmarks & ETFs
+    "SPY", "QQQ", "IWM", "DIA", "GLD", "SPXL",
+    # Leveraged Suites
+    "TQQQ", "SOXL", "TECL", "YINN", "KORU", "CRCL", "INFQ",
+    # Mega-Cap Tech, Growth & Crypto Stocks
+    "TSLA", "NVDA", "AAPL", "NFLX", "NOW", "COIN", "BABA", "IREN", "HIVE", "FSLY", "W", "NIO", "PONY", "NASA", "RVI"
+]
 
 def get_db_connection():
     if not HEDGE_DATABASE_URL:
@@ -68,20 +75,22 @@ def sync_options_for_underlyings(underlyings: List[str] = TARGET_UNDERLYINGS, da
     conn = get_db_connection()
     opt_client = OptionHistoricalDataClient(ALPACA_API_KEY, ALPACA_SECRET_KEY)
     
-    logger.info(f"Starting Options OHLC & Greeks sync for underlyings: {underlyings}")
+    logger.info(f"Starting Options OHLC & Greeks sync for {len(underlyings)} underlyings (Calls & Puts)...")
     
     total_contracts_metadata = []
     all_option_ohlc_records = []
     
-    # Also fetch latest underlying stock prices from Supabase for moneyness calculation
+    # Fetch latest underlying prices for moneyness calculation
     underlying_prices = {}
     with conn.cursor() as cur:
         cur.execute("SELECT symbol, close FROM v_stock_latest_snapshot WHERE symbol = ANY(%s);", (underlyings,))
         for sym, cl in cur.fetchall():
             underlying_prices[sym] = float(cl) if cl else None
 
+    today_date = datetime.now(timezone.utc).date()
+
     for u in underlyings:
-        logger.info(f"Fetching Option Chain for {u}...")
+        logger.info(f"Processing Options Chain for {u}...")
         try:
             chain = opt_client.get_option_chain(OptionChainRequest(underlying_symbol=u))
             if not chain:
@@ -90,10 +99,8 @@ def sync_options_for_underlyings(underlyings: List[str] = TARGET_UNDERLYINGS, da
                 
             u_price = underlying_prices.get(u)
             
-            # Select liquid/active contracts
-            # Filter: contracts expiring within 180 days, with recent trades/quotes
+            # Select liquid/active contracts (both CALL and PUT)
             valid_contracts = []
-            today_date = datetime.now(timezone.utc).date()
             
             for sym, snap in chain.items():
                 parsed = parse_occ_symbol(sym)
@@ -104,28 +111,27 @@ def sync_options_for_underlyings(underlyings: List[str] = TARGET_UNDERLYINGS, da
                 if dte < 0 or dte > 180:
                     continue
                 
-                # Check if it has a recent trade or active bid/ask quote
+                # Check trade/quote activity
                 has_trade = bool(snap.latest_trade and snap.latest_trade.price > 0.01)
-                has_quote = bool(snap.latest_quote and (snap.latest_quote.bid_price > 0.05 or snap.latest_quote.ask_price > 0.05))
+                has_quote = bool(snap.latest_quote and (snap.latest_quote.bid_price > 0.02 or snap.latest_quote.ask_price > 0.02))
                 
-                # Prefer contracts within reasonable distance to strike
                 strike = parsed["strike_price"]
                 near_money = True
                 if u_price:
                     pct_diff = abs(strike - u_price) / u_price
-                    near_money = pct_diff <= 0.35  # within 35% of underlying price
+                    near_money = pct_diff <= 0.40  # within 40% of underlying price
                 
                 if (has_trade or has_quote) and near_money:
                     valid_contracts.append((sym, snap, parsed, dte))
 
-            # Limit to most active contracts to keep requests efficient
+            # Limit to most active contracts per underlying
             valid_contracts = valid_contracts[:max_contracts_per_underlying]
-            logger.info(f"{u}: Selected {len(valid_contracts)} active contracts for OHLC bar pulling.")
+            logger.info(f"{u}: Selected {len(valid_contracts)} active contracts (Calls & Puts) for OHLC bar pulling.")
             
             if not valid_contracts:
                 continue
 
-            # 1. Prepare Metadata records
+            # 1. Metadata records
             for sym, snap, parsed, dte in valid_contracts:
                 total_contracts_metadata.append((
                     sym,
@@ -283,6 +289,13 @@ def sync_options_for_underlyings(underlyings: List[str] = TARGET_UNDERLYINGS, da
         cnt_ohlc, min_d, max_d = cur.fetchone()
         
         cur.execute("""
+            SELECT contract_type, COUNT(DISTINCT option_symbol), COUNT(*)
+            FROM option_ohlc_daily
+            GROUP BY contract_type;
+        """)
+        type_breakdown = cur.fetchall()
+
+        cur.execute("""
             SELECT underlying_symbol, COUNT(DISTINCT option_symbol), COUNT(*) 
             FROM option_ohlc_daily 
             GROUP BY underlying_symbol 
@@ -291,11 +304,15 @@ def sync_options_for_underlyings(underlyings: List[str] = TARGET_UNDERLYINGS, da
         underlying_counts = cur.fetchall()
 
     print("\n" + "="*85)
-    print("SUPABASE OPTIONS OHLC & GREEKS INGESTION SUMMARY")
+    print("SUPABASE OPTIONS OHLC & GREEKS INGESTION SUMMARY (CALLS & PUTS)")
     print("="*85)
     print(f"Total Option Contracts in Metadata: {cnt_meta}")
     print(f"Total Option Daily OHLC Rows:       {cnt_ohlc}")
     print(f"Date Range:                         {min_d} -> {max_d}")
+    print("\nContract Breakdown (Calls vs Puts):")
+    for c_type, c_cnt, r_cnt in type_breakdown:
+        print(f" - {c_type:<5}: {c_cnt} contracts | {r_cnt} daily OHLC rows")
+
     print("\nOptions Coverage by Underlying:")
     for u, u_contracts, u_rows in underlying_counts:
         print(f" - {u:<7}: {u_contracts} contracts | {u_rows} daily OHLC rows")
