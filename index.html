@@ -13,7 +13,6 @@
   <!-- Supabase Client & Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
   <style>
     :root {
@@ -22,7 +21,7 @@
       --bg-surface-elevated: #1a2233;
       --bg-subtle: #222d42;
       --border-color: #26334d;
-      --border-focus: #3b82f6;
+      --border-focus: #38bdf8;
       
       --text-primary: #f1f5f9;
       --text-secondary: #94a3b8;
@@ -57,7 +56,6 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Top Navigation Header */
     header {
       background-color: var(--bg-surface);
       border-bottom: 1px solid var(--border-color);
@@ -101,13 +99,12 @@
       color: var(--accent-blue);
     }
 
-    /* Search & Quick Ticker Selector */
     .search-section {
       display: flex;
       align-items: center;
       gap: 0.75rem;
       flex: 1;
-      max-width: 650px;
+      max-width: 700px;
     }
 
     .search-box {
@@ -131,7 +128,7 @@
     .search-input:focus {
       outline: none;
       border-color: var(--border-focus);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
     }
 
     .search-icon {
@@ -187,7 +184,6 @@
       box-shadow: 0 0 8px var(--accent-green);
     }
 
-    /* Main Container */
     main {
       flex: 1;
       padding: 1.5rem 2rem;
@@ -199,7 +195,6 @@
       gap: 1.5rem;
     }
 
-    /* Ticker Banner */
     .ticker-banner {
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
@@ -289,7 +284,6 @@
       color: var(--accent-red);
     }
 
-    /* Plain English Insights Grid */
     .insights-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -343,7 +337,6 @@
       line-height: 1.45;
     }
 
-    /* Tabs & Content Panels */
     .tab-bar {
       display: flex;
       gap: 0.5rem;
@@ -384,7 +377,6 @@
       background: var(--accent-blue);
     }
 
-    /* Charts Container */
     .panel {
       display: none;
       flex-direction: column;
@@ -449,7 +441,6 @@
       width: 100%;
     }
 
-    /* Options Section Styles */
     .options-control-bar {
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
@@ -465,7 +456,7 @@
     .options-selector-group {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 1.25rem;
       flex-wrap: wrap;
     }
 
@@ -474,16 +465,17 @@
       color: var(--text-muted);
       font-weight: 600;
       text-transform: uppercase;
+      margin-bottom: 0.25rem;
     }
 
     select.opt-select {
       background: var(--bg-surface-elevated);
       border: 1px solid var(--border-color);
       color: var(--text-primary);
-      padding: 0.45rem 0.85rem;
+      padding: 0.5rem 0.85rem;
       border-radius: 6px;
       font-family: var(--font-mono);
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       outline: none;
       cursor: pointer;
     }
@@ -504,7 +496,6 @@
       }
     }
 
-    /* Option Chain Table */
     .chain-table-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
@@ -568,30 +559,6 @@
 
     .call-val { color: #34d399; }
     .put-val { color: #fb7185; }
-
-    /* Loading Spinner */
-    .loader {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 3rem;
-      color: var(--accent-blue);
-      font-weight: 600;
-      gap: 0.5rem;
-    }
-
-    .spinner {
-      width: 20px;
-      height: 20px;
-      border: 3px solid rgba(56, 189, 248, 0.2);
-      border-top-color: var(--accent-blue);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
   </style>
 </head>
 <body>
@@ -622,11 +589,11 @@
 
     <div class="header-status">
       <div class="status-dot"></div>
-      <span>Cloud Supabase Live</span>
+      <span id="connStatus">Supabase Cloud Connected</span>
     </div>
   </header>
 
-  <!-- Main Content -->
+  <!-- Main Container -->
   <main>
     
     <!-- Ticker Summary Banner -->
@@ -660,7 +627,7 @@
       <div class="insight-card momentum">
         <div class="insight-label">Momentum & RSI</div>
         <div class="insight-headline" id="insMomentumTitle">RSI 58.2 (Healthy Zone)</div>
-        <div class="insight-desc" id="insMomentumDesc">Buyers are in clear control without entering the overheated &gt;70 overbought territory. Room for upside exists.</div>
+        <div class="insight-desc" id="insMomentumDesc">Buyers are in clear control without entering the overheated >70 overbought territory. Room for upside exists.</div>
       </div>
 
       <div class="insight-card options">
@@ -672,7 +639,7 @@
       <div class="insight-card levels">
         <div class="insight-label">Key Price Levels & Expected Range</div>
         <div class="insight-headline" id="insLevelsTitle">Support: $73.30 | Resistance: $82.50</div>
-        <div class="insight-desc" id="insLevelsDesc">30-day expected statistical move is &plusmn;$4.80 based on implied volatility. 52w High is $89.40 (-14.1% away).</div>
+        <div class="insight-desc" id="insLevelsDesc">30-day expected statistical move is ±$4.80 based on implied volatility. 52w High is $89.40 (-14.1% away).</div>
       </div>
     </div>
 
@@ -782,16 +749,13 @@
               <th colspan="5" class="puts-header">PUT OPTIONS (HEDGING DOWNSIDE)</th>
             </tr>
             <tr>
-              <!-- Call Columns -->
               <th>Bid</th>
               <th>Ask</th>
               <th>Last Close</th>
               <th>Volume</th>
-              <th>IV / Delta</th>
-              <!-- Strike -->
+              <th>Delta / IV</th>
               <th class="center">Strike ($)</th>
-              <!-- Put Columns -->
-              <th>IV / Delta</th>
+              <th>Delta / IV</th>
               <th>Volume</th>
               <th>Last Close</th>
               <th>Bid</th>
@@ -816,7 +780,13 @@
     // ═══════════════════════════════════════════════════════════════
     const SUPABASE_URL = "https://xnrtcbkpfhntthcbwxfm.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhucnRjYmtwZmhudHRoY2J3eGZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NzA5ODQsImV4cCI6MjA4MTA0Njk4NH0.R3hZjiS7AsBjKRQOjb12veAquHLtPRZvaLEOJUepR58";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    let supabaseClient = null;
+    try {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch(err) {
+      console.error("Supabase init error:", err);
+    }
 
     // State
     let currentSymbol = "TQQQ";
@@ -850,12 +820,13 @@
       document.getElementById(tabId).classList.add("active");
 
       // Trigger resize for Chart.js
-      if (tabId === "optionsTab") {
-        setTimeout(() => {
-          if (callChartInstance) callChartInstance.resize();
-          if (putChartInstance) putChartInstance.resize();
-        }, 100);
-      }
+      setTimeout(() => {
+        if (stockChartInstance) stockChartInstance.resize();
+        if (volumeChartInstance) volumeChartInstance.resize();
+        if (rsiChartInstance) rsiChartInstance.resize();
+        if (callChartInstance) callChartInstance.resize();
+        if (putChartInstance) putChartInstance.resize();
+      }, 100);
     }
 
     async function loadSymbol(sym) {
@@ -867,32 +838,39 @@
         chip.classList.toggle("active", chip.innerText === currentSymbol);
       });
 
-      // 1. Fetch Latest Snapshot & Metadata
-      const { data: metaData, error: metaErr } = await supabase
-        .from("v_stock_latest_snapshot")
-        .select("*")
-        .eq("symbol", currentSymbol)
-        .maybeSingle();
+      try {
+        // 1. Fetch Latest Snapshot & Metadata
+        const { data: metaData, error: metaErr } = await supabaseClient
+          .from("v_stock_latest_snapshot")
+          .select("*")
+          .eq("symbol", currentSymbol)
+          .maybeSingle();
 
-      if (metaData) {
-        currentStockInfo = metaData;
-        updateHeaderAndInsights(metaData);
+        if (metaData) {
+          currentStockInfo = metaData;
+          updateHeaderAndInsights(metaData);
+        }
+
+        // 2. Fetch Daily OHLC & Technicals (150 days)
+        const { data: ohlcData, error: ohlcErr } = await supabaseClient
+          .from("stock_ohlc_daily")
+          .select("*")
+          .eq("symbol", currentSymbol)
+          .order("date", { ascending: true });
+
+        if (ohlcData && ohlcData.length > 0) {
+          rawStockData = ohlcData;
+          renderStockCharts(rawStockData);
+        } else {
+          console.warn("No stock OHLC data returned for", currentSymbol);
+        }
+
+        // 3. Fetch Options Expirations & Chain
+        await loadOptionsData(currentSymbol);
+
+      } catch (err) {
+        console.error("Error loading symbol data:", err);
       }
-
-      // 2. Fetch Daily OHLC & Technicals (150 days)
-      const { data: ohlcData, error: ohlcErr } = await supabase
-        .from("stock_ohlc_daily")
-        .select("*")
-        .eq("symbol", currentSymbol)
-        .order("date", { ascending: true });
-
-      if (ohlcData && ohlcData.length > 0) {
-        rawStockData = ohlcData;
-        renderStockCharts(rawStockData);
-      }
-
-      // 3. Fetch Options Expirations & Chain
-      await loadOptionsData(currentSymbol);
     }
 
     function updateHeaderAndInsights(d) {
@@ -910,9 +888,7 @@
       chgEl.innerText = `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
       chgEl.className = `change-badge ${chg >= 0 ? 'positive' : 'negative'}`;
 
-      // ═══════════════════════════════════════════════════════════════
-      // PLAIN ENGLISH INSIGHTS GENERATION
-      // ═══════════════════════════════════════════════════════════════
+      // Plain English Insights Calculation
       const s50 = parseFloat(d.sma_50 || price);
       const s200 = parseFloat(d.sma_200 || price);
       const rsi = parseFloat(d.rsi_14 || 50);
@@ -954,18 +930,23 @@
       // Levels
       const support = (price - atr * 1.5).toFixed(2);
       const resistance = (price + atr * 1.5).toFixed(2);
-      const pctToHigh = (((high52 - price) / high52) * 100).toFixed(1);
+      const pctToHigh = high52 > 0 ? (((high52 - price) / high52) * 100).toFixed(1) : "0.0";
       document.getElementById("insLevelsTitle").innerText = `Support: $${support} | Resistance: $${resistance}`;
       document.getElementById("insLevelsDesc").innerText = `Expected daily swing buffer is ±$${atr.toFixed(2)}. Currently ${pctToHigh}% away from its 52-week peak ($${high52.toFixed(2)}).`;
     }
 
     function renderStockCharts(data) {
+      if (!window.Chart) {
+        console.error("Chart.js not loaded!");
+        return;
+      }
+
       const dates = data.map(d => d.date);
       const closes = data.map(d => parseFloat(d.close));
       const sma50 = data.map(d => d.sma_50 ? parseFloat(d.sma_50) : null);
       const sma200 = data.map(d => d.sma_200 ? parseFloat(d.sma_200) : null);
       const ema20 = data.map(d => d.ema_20 ? parseFloat(d.ema_20) : null);
-      const volumes = data.map(d => parseInt(d.volume));
+      const volumes = data.map(d => parseInt(d.volume || 0));
       const volAvg = data.map(d => d.vol_sma_20 ? parseInt(d.vol_sma_20) : null);
       const rsis = data.map(d => d.rsi_14 ? parseFloat(d.rsi_14) : null);
 
@@ -1014,9 +995,9 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
           plugins: {
-            legend: { labels: { color: "#94a3b8", font: { family: "Inter", size: 11 } } },
-            tooltip: { mode: "index", intersect: false }
+            legend: { labels: { color: "#94a3b8", font: { family: "Inter", size: 11 } } }
           },
           scales: {
             x: { grid: { color: "rgba(38, 51, 77, 0.5)" }, ticks: { color: "#64748b", maxTicksLimit: 8 } },
@@ -1083,7 +1064,7 @@
           plugins: { legend: { display: false } },
           scales: {
             x: { display: false },
-            y: { min: 20, max: 80, grid: { color: "rgba(38, 51, 77, 0.4)" }, ticks: { color: "#64748b" } }
+            y: { min: 10, max: 90, grid: { color: "rgba(38, 51, 77, 0.4)" }, ticks: { color: "#64748b" } }
           }
         }
       });
@@ -1100,8 +1081,7 @@
     // OPTIONS & CHAINS HANDLERS
     // ═══════════════════════════════════════════════════════════════
     async function loadOptionsData(sym) {
-      // 1. Fetch available expirations
-      const { data: expRows, error } = await supabase
+      const { data: expRows } = await supabaseClient
         .from("option_contracts_metadata")
         .select("expiration_date")
         .eq("underlying_symbol", sym)
@@ -1112,7 +1092,8 @@
 
       if (!expRows || expRows.length === 0) {
         expSelect.innerHTML = "<option>No Options Available</option>";
-        document.getElementById("chainTableBody").innerHTML = `<tr><td colspan="11" class="center" style="padding: 2rem;">No options data in database for ${sym}.</td></tr>`;
+        document.getElementById("optStrikeSelect").innerHTML = "<option>-</option>";
+        document.getElementById("chainTableBody").innerHTML = `<tr><td colspan="11" class="center" style="padding: 2rem;">No options data stored for ${sym}.</td></tr>`;
         return;
       }
 
@@ -1132,18 +1113,19 @@
       document.getElementById("optExpDisp").innerText = exp;
 
       // 1. Fetch Strikes for this expiration
-      const { data: strikeRows } = await supabase
+      const { data: strikeRows } = await supabaseClient
         .from("option_contracts_metadata")
         .select("strike_price")
         .eq("underlying_symbol", currentSymbol)
         .eq("expiration_date", exp)
         .order("strike_price", { ascending: true });
 
+      if (!strikeRows || strikeRows.length === 0) return;
+
       availableStrikes = [...new Set(strikeRows.map(r => parseFloat(r.strike_price)))];
       const strikeSelect = document.getElementById("optStrikeSelect");
       strikeSelect.innerHTML = "";
 
-      // Select closest strike to current stock price
       let closestStrike = availableStrikes[0];
       let minDiff = Infinity;
       const curPrice = currentStockInfo ? parseFloat(currentStockInfo.close) : 0;
@@ -1163,7 +1145,7 @@
 
       strikeSelect.value = closestStrike;
 
-      // Load Option Charts and Table Chain
+      // Load Option Charts & Full Chain Table
       loadOptionCharts();
       loadOptionChainTable(exp);
     }
@@ -1173,7 +1155,7 @@
       const strike = parseFloat(document.getElementById("optStrikeSelect").value);
 
       // Fetch CALL Daily OHLC
-      const { data: callBars } = await supabase
+      const { data: callBars } = await supabaseClient
         .from("option_ohlc_daily")
         .select("*")
         .eq("underlying_symbol", currentSymbol)
@@ -1183,7 +1165,7 @@
         .order("date", { ascending: true });
 
       // Fetch PUT Daily OHLC
-      const { data: putBars } = await supabase
+      const { data: putBars } = await supabaseClient
         .from("option_ohlc_daily")
         .select("*")
         .eq("underlying_symbol", currentSymbol)
@@ -1200,6 +1182,7 @@
     }
 
     function renderSingleOptionChart(canvasId, bars, color, optType) {
+      if (!window.Chart) return;
       const ctx = document.getElementById(canvasId).getContext("2d");
       const dates = (bars || []).map(b => b.date);
       const closes = (bars || []).map(b => parseFloat(b.close));
@@ -1237,6 +1220,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
           plugins: {
             legend: { labels: { color: "#94a3b8", font: { size: 10 } } }
           },
@@ -1253,7 +1237,7 @@
     }
 
     async function loadOptionChainTable(exp) {
-      const { data: chainRows, error } = await supabase
+      const { data: chainRows } = await supabaseClient
         .from("v_option_latest_chain")
         .select("*")
         .eq("underlying_symbol", currentSymbol)
@@ -1268,7 +1252,6 @@
         return;
       }
 
-      // Group by Strike
       const strikeMap = {};
       chainRows.forEach(r => {
         const stk = parseFloat(r.strike_price);
@@ -1288,14 +1271,12 @@
           loadOptionCharts();
         };
 
-        // Format Call data
         const callBid = call && call.bid ? `$${parseFloat(call.bid).toFixed(2)}` : "-";
         const callAsk = call && call.ask ? `$${parseFloat(call.ask).toFixed(2)}` : "-";
         const callClose = call && call.close ? `$${parseFloat(call.close).toFixed(2)}` : "-";
         const callVol = call && call.volume ? parseInt(call.volume).toLocaleString() : "0";
         const callDelta = call && call.delta ? `Δ ${parseFloat(call.delta).toFixed(2)}` : "-";
 
-        // Format Put data
         const putBid = put && put.bid ? `$${parseFloat(put.bid).toFixed(2)}` : "-";
         const putAsk = put && put.ask ? `$${parseFloat(put.ask).toFixed(2)}` : "-";
         const putClose = put && put.close ? `$${parseFloat(put.close).toFixed(2)}` : "-";
