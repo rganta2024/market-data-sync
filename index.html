@@ -726,8 +726,8 @@
 
       <div class="auth-form">
         <div class="auth-field">
-          <label class="auth-label" for="authUsername">User ID</label>
-          <input type="text" id="authUsername" class="auth-input" placeholder="User ID" autocomplete="username" />
+          <label class="auth-label" for="authUsername">Email</label>
+          <input type="email" id="authUsername" class="auth-input" placeholder="you@example.com" autocomplete="username" />
         </div>
 
         <div class="auth-field">
@@ -958,50 +958,63 @@
   <!-- Application Logic -->
   <script>
     // ═══════════════════════════════════════════════════════════════
-    // AUTHENTICATION CONFIGURATION (CUSTOMIZE YOUR CREDENTIALS HERE)
+    // AUTHENTICATION — real Supabase Auth (email + password) + audit
+    // Sign-in is verified server-side. There are NO passwords in this file.
     // ═══════════════════════════════════════════════════════════════
-    // Default User IDs and Passwords:
-    const VALID_CREDENTIALS = {
-      "admin": "fidelity2026",
-      "rganta": "fidelity2026"
-    };
-
-    function checkAuthOnLoad() {
-      const isAuth = sessionStorage.getItem("marketlens_authenticated") === "true";
+    async function checkAuthOnLoad() {
       const overlay = document.getElementById("authOverlay");
-      if (isAuth) {
-        overlay.style.display = "none";
-        initializeApp();
-      } else {
-        overlay.style.display = "flex";
-        document.getElementById("authPassword").addEventListener("keypress", (e) => {
-          if (e.key === "Enter") attemptLogin();
-        });
-        document.getElementById("authUsername").addEventListener("keypress", (e) => {
-          if (e.key === "Enter") document.getElementById("authPassword").focus();
-        });
-      }
+      // Resume an existing Supabase session, if one is active
+      try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+          overlay.style.display = "none";
+          await recordAccess();
+          initializeApp();
+          return;
+        }
+      } catch (e) {}
+
+      overlay.style.display = "flex";
+      document.getElementById("authPassword").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") attemptLogin();
+      });
+      document.getElementById("authUsername").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") document.getElementById("authPassword").focus();
+      });
     }
 
-    function attemptLogin() {
-      const user = document.getElementById("authUsername").value.trim().toLowerCase();
-      const pass = document.getElementById("authPassword").value.trim();
+    async function attemptLogin() {
+      const email = document.getElementById("authUsername").value.trim();
+      const pass  = document.getElementById("authPassword").value;
       const errEl = document.getElementById("authError");
 
-      if (VALID_CREDENTIALS[user] && VALID_CREDENTIALS[user] === pass) {
-        sessionStorage.setItem("marketlens_authenticated", "true");
-        document.getElementById("authOverlay").style.display = "none";
-        errEl.style.display = "none";
-        initializeApp();
-      } else {
+      if (!supabaseClient) {
+        errEl.textContent = "Supabase failed to load. Check your connection.";
+        errEl.style.display = "block";
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password: pass });
+      if (error) {
+        errEl.textContent = error.message || "Invalid email or password. Please try again.";
         errEl.style.display = "block";
         document.getElementById("authPassword").value = "";
         document.getElementById("authPassword").focus();
+        return;
       }
+      document.getElementById("authOverlay").style.display = "none";
+      errEl.style.display = "none";
+      await recordAccess();
+      initializeApp();
     }
 
-    function lockDashboard() {
-      sessionStorage.removeItem("marketlens_authenticated");
+    // Audit: record this dashboard view (identity is stamped server-side)
+    async function recordAccess() {
+      try { await supabaseClient.rpc("log_dashboard_access", { p_event: "index_view" }); } catch (e) {}
+    }
+
+    async function lockDashboard() {
+      try { await supabaseClient.auth.signOut(); } catch (e) {}
       document.getElementById("authOverlay").style.display = "flex";
       document.getElementById("authPassword").value = "";
       document.getElementById("authError").style.display = "none";
