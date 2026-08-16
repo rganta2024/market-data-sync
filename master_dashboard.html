@@ -269,6 +269,9 @@ const esc    = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 const truncName = (v) => { const s = plain(v); if (s==='—') return `<span class="l">—</span>`;
   const t = s.length > 30 ? s.slice(0,30)+'…' : s;
   return `<span class="l" title="${esc(s)}">${esc(t)}</span>`; };   // 30-char cap, full text on hover
+const symf = (v) => { const s = plain(v); if (s==='—') return `<span class="sym">—</span>`;
+  const t = s.length > 8 ? s.slice(0,8) : s;
+  return `<span class="sym" title="${esc(s)}">${esc(t)}</span>`; };   // 8-char cap, full symbol on hover
 const signCls= (v) => { v=N(v); return v==null?'':(v>0?'pos':(v<0?'neg':'')); };
 
 // raw accessor
@@ -489,7 +492,7 @@ function detailPanel(r){
 // ─── Column definitions by group ───
 const COLGROUPS = {
   basics: [
-    { key:'symbol',        label:'Symbol',  l:true, get:r=>r.symbol,       fmt:v=>`<span class="sym">${plain(v)}</span>` },
+    { key:'symbol',        label:'Symbol',  l:true, get:r=>r.symbol,       fmt:symf },
     { key:'links',         label:'Links',   l:true, get:r=>'',            render:symbolLinks },
     { key:'company_name',  label:'Description', l:true, get:r=>r.company_name, fmt:truncName },
     { key:'signal',        label:'Signal',  l:true, get:r=>SIG_RANK[r.signal]??99, render:r=>sigChip(r.signal) },
@@ -548,7 +551,7 @@ const GROUP_LABELS = { basics:'Broker basics', technicals:'Technicals', performa
 const SIGNAL_COLS = [
   { key:'signal',        label:'Signal', l:true, get:r=>SIG_RANK[r.signal]??99, render:r=>sigChip(r.signal) },
   { key:'signal_score',  label:'Score',          get:r=>N(r.signal_score),     fmt:scoref },
-  { key:'symbol',        label:'Symbol', l:true,  get:r=>r.symbol,              fmt:v=>`<span class="sym">${plain(v)}</span>` },
+  { key:'symbol',        label:'Symbol', l:true,  get:r=>r.symbol,              fmt:symf },
   { key:'company_name',  label:'Description', l:true, get:r=>r.company_name,     fmt:v=>`<span class="l">${plain(v)}</span>` },
   { key:'stock_price',   label:'Last',           get:r=>N(r.stock_price),      fmt:money2 },
   { key:'price_change_1d_pct', label:'%Chg',     get:r=>N(r.price_change_1d_pct), fmt:pctf, sign:true },
@@ -559,7 +562,7 @@ const SIGNAL_COLS = [
 ];
 // Movers-tab column set (sorted by today's % move)
 const MOVERS_COLS = [
-  { key:'symbol',        label:'Symbol', l:true, get:r=>r.symbol,              fmt:v=>`<span class="sym">${plain(v)}</span>` },
+  { key:'symbol',        label:'Symbol', l:true, get:r=>r.symbol,              fmt:symf },
   { key:'company_name',  label:'Description', l:true, get:r=>r.company_name,   fmt:truncName },
   { key:'signal',        label:'Signal', l:true, get:r=>SIG_RANK[r.signal]??99, render:r=>sigChip(r.signal) },
   { key:'stock_price',   label:'Last',           get:r=>N(r.stock_price),      fmt:money2 },
