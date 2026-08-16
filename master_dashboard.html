@@ -263,7 +263,7 @@ const BROKER_LABELS = { ibkr:'IBKR', icici:'ICICI' };
 const brokerLabel = (b) => BROKER_LABELS[b] || b.charAt(0).toUpperCase()+b.slice(1);
 const numf   = (v) => { v=N(v); return v==null?'—':Math.round(v).toLocaleString(); };
 const dec2   = (v) => { v=N(v); return v==null?'—':v.toFixed(2); };
-const pctf   = (v) => { v=N(v); return v==null?'—':(v>=0?'+':'')+v.toFixed(2)+'%'; };
+const pctf   = (v) => { v=N(v); return v==null?'—':(v>=0?'+':'')+(v*100).toFixed(2)+'%'; };  // v is a fraction (0.10 = 10%)
 const plain  = (v) => (v===null||v===undefined||v==='')?'—':String(v);
 const esc    = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const truncName = (v) => { const s = plain(v); if (s==='—') return `<span class="l">—</span>`;
@@ -280,7 +280,7 @@ const xatr   = (v) => { v=N(v); return v==null?'—':(v>=0?'+':'')+v.toFixed(1)+
 const rsiFmt = (v) => { v=N(v); if(v==null) return '—';
   return `<span class="${v>=70?'neg':(v<=30?'pos':'')}">${v.toFixed(0)}</span>`; };
 const heatBg = (v) => { v=N(v); if(v==null) return '';
-  const a = Math.min(0.55, Math.abs(v)/35);
+  const a = Math.min(0.55, Math.abs(v*100)/35);  // v is a fraction; ~35% move = max intensity
   return `background:${v>=0?`rgba(63,185,80,${a})`:`rgba(248,81,73,${a})`};`; };
 const posPct = (lo,last,hi) => { lo=N(lo); last=N(last); hi=N(hi);
   return (lo==null||hi==null||last==null||hi<=lo)?null:Math.max(0,Math.min(100,(last-lo)/(hi-lo)*100)); };
@@ -368,7 +368,7 @@ function drawReconstruct(r){
   const canvas = document.getElementById('recon-'+kid);
   if (!canvas || typeof Chart==='undefined') return;
   const P = N(r.stock_price); if (P==null) return;
-  const pt = (key)=>{ const pc=N(rw(key)(r)); return pc==null?null:+(P/(1+pc/100)).toFixed(2); };
+  const pt = (key)=>{ const pc=N(rw(key)(r)); return pc==null?null:+(P/(1+pc)).toFixed(2); };  // pc is a fraction
   const seq = [['1Y','Price Change 1Y'],['YTD','Price Change YTD'],['3M','Price Change 3M'],['1M','Price Change 1M'],['now',null]];
   const labels=[], data=[];
   seq.forEach(([lbl,key])=>{ const v = key? pt(key) : P; if (v!=null){ labels.push(lbl); data.push(v); } });
@@ -398,7 +398,7 @@ function drawDetailExtras(r){
   const bars = ohlcCache.get(r.symbol);
   if (bars === undefined) return;                 // ladder + daily chart wait for the OHLC fetch
   const cur=r.currency, m2=v=>moneyC(v,cur,true), last=N(r.stock_price);
-  const pctFrom = (p)=> (last && p!=null) ? (p/last-1)*100 : null;
+  const pctFrom = (p)=> (last && p!=null) ? (p/last-1) : null;  // fraction, formatted by pctf
   // DCA ladder
   if (ladderEl){
     if (!bars.length){ ladderEl.innerHTML = `<span class="muted">No price history in Supabase for ${esc(r.symbol)} — add it to the OHLC sync.</span>`; }
@@ -441,7 +441,7 @@ function fmtSuggest(s){ if(!s || !s.length) return '—'; const a=s[0], p=s[1];
        : a==='exit' ? 'Exit' : 'Hold'; }
 function detailPanel(r){
   const cur=r.currency, m2=v=>moneyC(v,cur,true), m0=v=>moneyC(v,cur,false), d=r.signal_detail||{};
-  const be = (N(r.avg_price) && N(r.stock_price)) ? (N(r.avg_price)/N(r.stock_price)-1)*100 : null;
+  const be = (N(r.avg_price) && N(r.stock_price)) ? (N(r.avg_price)/N(r.stock_price)-1) : null;  // fraction, formatted by pctf
   const volR = (()=>{ const v=N(rw('Volume')(r)), a=N(rw('Average Volume (20D)')(r)); return (v&&a)?v/a:null; })();
   const position = `<div class="dsec"><h4>Position</h4>
     ${dv('Shares',numf(r.shares_owned))}${dv('Avg cost',m2(r.avg_price))}${dv('Last close',m2(r.stock_price))}
@@ -595,7 +595,7 @@ function sectorRows(){
     map[s].profit_loss  += N(r.profit_loss)||0;
   });
   const rows = Object.values(map);
-  rows.forEach(x => x.portfolio_pct = totMv ? x.market_value/totMv*100 : null);
+  rows.forEach(x => x.portfolio_pct = totMv ? x.market_value/totMv : null);  // fraction, formatted by pctf
   if (!cur) rows.forEach(x => { x.market_value=x.today_pl=x.profit_loss=x.portfolio_pct=null; });
   return rows;
 }
@@ -655,7 +655,7 @@ const FILTERS = {
       return v==='tiny'?m<100 : v==='small'?(m>=100&&m<1000) : v==='med'?(m>=1000&&m<5000) : v==='large'?(m>=5000&&m<20000) : m>=20000; } },
   pnl: { opts:[['all','P&L: all'],['win','Winners'],['lose','Losers'],['bigwin','Big winners >25%'],['biglose','Big losers <-25%']],
     test:(r,v)=>{ if(v==='all') return true; const p=N(r.profit_loss_pct); if(p==null) return false;
-      return v==='win'?p>0 : v==='lose'?p<0 : v==='bigwin'?p>25 : p<-25; } },
+      return v==='win'?p>0 : v==='lose'?p<0 : v==='bigwin'?p>0.25 : p<-0.25; } },
   tech: { opts:[['all','Technicals: all'],['os','RSI ≤ 30 (oversold)'],['ob','RSI ≥ 70 (overbought)'],
       ['abv20','Above 20D'],['blw20','Below 20D'],['abv50','Above 50D'],['blw50','Below 50D'],
       ['abv200','Above 200D'],['blw200','Below 200D'],['abvall','Above all MAs'],['blwall','Below all MAs'],
@@ -672,7 +672,7 @@ const FILTERS = {
         case 'abv200': return a200>0; case 'blw200': return a200<0;
         case 'abvall': return a20>0 && a50>0 && a200>0; case 'blwall': return a20<0 && a50<0 && a200<0;
         case 'turnup': return a20>0 && a50<0; case 'rollover': return a20<0 && a50>0;
-        case 'nearhi': return h!=null && h>=-5; case 'nearlo': return l!=null && l<=10;
+        case 'nearhi': return h!=null && h>=-0.05; case 'nearlo': return l!=null && l<=0.10;
         case 'hivol': return atrp!=null && atrp>=5; } return true; } },
   day: { opts:[['all','Day action: all'],['outlier','Outlier ≥1×ATR'],['outup','Outlier up'],['outdn','Outlier down'],
       ['outbig','Extreme ≥1.5×ATR'],['big5','Moved ≥5%'],['volsurge','Volume surge ≥1.5×'],
@@ -683,7 +683,7 @@ const FILTERS = {
       const pos = (dl!=null&&dh!=null&&dh>dl&&last!=null) ? (last-dl)/(dh-dl) : null;
       switch(v){
         case 'outlier': return m!=null && Math.abs(m)>=1; case 'outup': return m!=null && m>=1; case 'outdn': return m!=null && m<=-1;
-        case 'outbig': return m!=null && Math.abs(m)>=1.5; case 'big5': return chg!=null && Math.abs(chg)>=5;
+        case 'outbig': return m!=null && Math.abs(m)>=1.5; case 'big5': return chg!=null && Math.abs(chg)>=0.05;
         case 'volsurge': return (vol&&av) ? vol/av>=1.5 : false;
         case 'clshi': return pos!=null && pos>=0.8; case 'clslo': return pos!=null && pos<=0.2; } return true; } },
   rx: { opts:[['all','Risk / exit: all'],['tgtcost','Target still below cost'],['stopcost','Stop above cost'],
@@ -742,9 +742,9 @@ async function refreshLive(){
     ROWS.forEach(r=>{ const d=q[(r.symbol||'').toUpperCase()]; if(!d||d.last==null) return;
       const shares=N(r.shares_owned)||0, prev=N(d.prevClose), cb=N(r.cost_basis);
       r.stock_price=d.last;
-      if(prev){ r.price_change_1d_pct=(d.last/prev-1)*100; r.today_pl=shares*(d.last-prev); if(r.raw) r.raw['Price Change ($)']=d.last-prev; }
+      if(prev){ r.price_change_1d_pct=(d.last/prev-1); r.today_pl=shares*(d.last-prev); if(r.raw) r.raw['Price Change ($)']=d.last-prev; }
       r.market_value=shares*d.last;
-      if(cb!=null){ r.profit_loss=r.market_value-cb; r.profit_loss_pct=cb?(r.market_value/cb-1)*100:r.profit_loss_pct; }
+      if(cb!=null){ r.profit_loss=r.market_value-cb; r.profit_loss_pct=cb?(r.market_value/cb-1):r.profit_loss_pct; }
       n++;
     });
     const t=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
